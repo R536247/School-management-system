@@ -1,0 +1,1 @@
+-- placeholder root-level migration (not used by Flyway) to document migrations

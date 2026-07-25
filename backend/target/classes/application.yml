@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/schoolms
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: 9f7a3d8b6c1e5f2a8d9c4b7e6f1a3d8c9b2e7f6a1d4c8b5e2f9a6c3d7e1b8f4
+    access-expiry-minutes: 15
+    refresh-expiry-days: 14

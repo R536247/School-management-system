@@ -25,7 +25,7 @@
                  │ Multi-AZ           │
                  │ Automated backup   │
                  └───────────────────┘
-                 
+
                  ┌─────────────────────┐
                  │ ElastiCache Redis   │
                  │ Multi-Node Cluster  │
@@ -190,6 +190,7 @@ aws logs create-log-group \
 ### 9. Register ECS Task Definitions
 
 **Backend Task Definition** (`ecs-task-backend.json`):
+
 ```json
 {
   "family": "school-ms-backend",
@@ -249,7 +250,10 @@ aws logs create-log-group \
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"],
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/actuator/health || exit 1"
+        ],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
@@ -318,6 +322,7 @@ aws application-autoscaling put-scaling-policy \
 ## Local Development
 
 ### Quick Start
+
 ```bash
 # 1. Start infrastructure
 docker-compose -f docker-compose.yml up -d
@@ -338,6 +343,7 @@ cd frontend && npm install && npm run dev
 ```
 
 ### Health Check
+
 ```bash
 # Backend health
 curl http://localhost:8080/actuator/health
@@ -352,6 +358,7 @@ psql -h localhost -U postgres -d schoolms -c "SELECT 1"
 ## Backup & Recovery
 
 ### Automated Backups (RDS)
+
 ```bash
 # List automated backups
 aws rds describe-db-snapshots \
@@ -366,6 +373,7 @@ aws rds create-db-snapshot \
 ```
 
 ### Manual Database Export
+
 ```bash
 # Export to S3
 aws dms create-replication-task \
@@ -479,6 +487,7 @@ aws ecs update-service \
 ## Disaster Recovery
 
 ### RTO/RPO Targets
+
 - **RTO** (Recovery Time Objective): < 1 hour
 - **RPO** (Recovery Point Objective): < 5 minutes
 
@@ -510,6 +519,7 @@ POSTGRES_HOST=$(aws rds describe-db-instances \
 ## Cost Optimization
 
 ### Recommendations
+
 - Use Fargate Spot for non-critical services (60% cheaper)
 - Set RDS max storage to auto-scale (avoid manual expansion)
 - Use Reserved Instances for predictable workloads (40% discount)
@@ -551,6 +561,7 @@ aws ecs wait services-stable \
 ## Performance Tuning
 
 ### Database Connection Pooling
+
 ```yaml
 spring:
   datasource:
@@ -562,6 +573,7 @@ spring:
 ```
 
 ### Redis Cache TTL
+
 ```java
 @Cacheable(value = "dashboard-summary", cacheManager = "redisCacheManager")
 public Map<String, Object> getSummary() {
@@ -570,6 +582,7 @@ public Map<String, Object> getSummary() {
 ```
 
 ### Query Optimization
+
 - Add indexes on foreign keys
 - Use database query logging to identify slow queries
 - Archive old activity logs annually

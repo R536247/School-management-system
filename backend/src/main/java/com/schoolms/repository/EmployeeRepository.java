@@ -9,4 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Page<Employee> findAllBySchoolId(Long schoolId, Pageable pageable);
+    boolean existsByIdAndSchoolId(Long id, Long schoolId);
 }

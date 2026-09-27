@@ -71,7 +71,8 @@ CREATE TABLE attendance (
   date DATE NOT NULL,
   status TEXT NOT NULL,
   meta JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX idx_attendance_school_date ON attendance(school_id, date);

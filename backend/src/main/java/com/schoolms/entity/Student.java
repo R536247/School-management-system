@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "students")
@@ -32,9 +34,11 @@ public class Student extends BaseEntity {
     @Column(name = "photo_path")
     private String photoPath;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "parent_info", columnDefinition = "jsonb")
     private String parentInfo;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "custom_fields", columnDefinition = "jsonb")
     private String customFields;
 

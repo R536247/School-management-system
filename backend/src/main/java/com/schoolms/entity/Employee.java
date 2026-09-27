@@ -6,6 +6,9 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "employees")
 public class Employee extends BaseEntity {
@@ -33,6 +36,7 @@ public class Employee extends BaseEntity {
     @Column(name = "status")
     private String status = "active";
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "meta", columnDefinition = "jsonb")
     private String meta;
 

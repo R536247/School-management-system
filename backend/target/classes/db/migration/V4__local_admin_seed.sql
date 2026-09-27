@@ -20,7 +20,7 @@ WITH demo_school AS (
   RETURNING id
 ), admin_user AS (
   INSERT INTO users (school_id, email, password_hash, first_name, last_name, is_active, created_at, updated_at)
-  SELECT s.id, 'admin@school.com', '$2b$12$WjVfANPbelUwLDOHYkdeKuA0qQaC69bPb1Lm.YiEy/D8SnKlnyiWy', 'Demo', 'Admin', true, now(), now()
+  SELECT s.id, 'admin@school.com', '$2b$12$v7ZkldcCOtT1KqHZYuGGX.CUjRu/EhwyeoVJfY6elnEGUn5eZmlyq', 'Demo', 'Admin', true, now(), now()
   FROM school s
   WHERE NOT EXISTS (
     SELECT 1 FROM users u WHERE u.school_id = s.id AND lower(u.email) = 'admin@school.com'

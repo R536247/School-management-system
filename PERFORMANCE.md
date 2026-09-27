@@ -3,6 +3,7 @@
 ## Performance Benchmarks
 
 ### Baseline Metrics (Single Server, PostgreSQL on localhost)
+
 - **Page Load**: 200-300ms (login page)
 - **API Response**: 50-150ms (GET students list with 50 items)
 - **Dashboard Load**: 200-400ms (aggregating counts)
@@ -10,6 +11,7 @@
 - **Database Query**: 10-50ms (indexed queries), 100-500ms (full table scans)
 
 ### Production Targets (ECS + RDS + ElastiCache)
+
 - **P95 Response**: < 200ms
 - **P99 Response**: < 500ms
 - **Error Rate**: < 0.1%
@@ -20,6 +22,7 @@
 ### 1. Indexing Strategy
 
 **Required Indexes** (created in V1/V2 migrations):
+
 ```sql
 -- Tenant isolation
 CREATE INDEX idx_users_school ON users(school_id);
@@ -38,6 +41,7 @@ CREATE INDEX idx_sections_class ON sections(class_id);
 ```
 
 **Query-Specific Indexes** (add as performance improves):
+
 ```sql
 -- For sorting/pagination
 CREATE INDEX idx_students_school_created ON students(school_id, created_at DESC);
@@ -49,6 +53,7 @@ CREATE INDEX idx_students_name ON students USING GIN (to_tsvector('english', fir
 ### 2. Query Optimization Examples
 
 ❌ **N+1 Query Problem**:
+
 ```java
 // BAD: Loads all students first, then loads each class in a loop
 List<Student> students = studentRepository.findAllBySchoolId(schoolId);
@@ -59,6 +64,7 @@ for (Student s : students) {
 ```
 
 ✅ **Solution 1 - Eager Loading**:
+
 ```java
 @Query("SELECT s FROM Student s " +
        "LEFT JOIN FETCH s.classRoom c " +
@@ -67,6 +73,7 @@ List<Student> findAllWithClassroom(@Param("schoolId") Long schoolId);
 ```
 
 ✅ **Solution 2 - Projection**:
+
 ```java
 @Query("SELECT new com.schoolms.dto.StudentDTO(s.id, s.firstName, c.name) " +
        "FROM Student s LEFT JOIN s.classRoom c " +
@@ -77,6 +84,7 @@ Page<StudentDTO> findStudentDTOs(@Param("schoolId") Long schoolId, Pageable page
 ### 3. Connection Pooling
 
 **Application.yml Configuration**:
+
 ```yaml
 spring:
   datasource:
@@ -86,15 +94,16 @@ spring:
       # Prod: 30-50 connections
       maximum-pool-size: 20
       minimum-idle: 5
-      connection-timeout: 20000  # 20 sec
-      idle-timeout: 600000       # 10 min
-      max-lifetime: 1800000      # 30 min
-      
+      connection-timeout: 20000 # 20 sec
+      idle-timeout: 600000 # 10 min
+      max-lifetime: 1800000 # 30 min
+
       # Leak detection
-      leak-detection-threshold: 60000    # Alert if connection held > 60s
+      leak-detection-threshold: 60000 # Alert if connection held > 60s
 ```
 
 **Monitoring Pool Health**:
+
 ```bash
 # View active connections
 SELECT count(*) FROM pg_stat_activity WHERE datname = 'schoolms';
@@ -106,13 +115,14 @@ SELECT * FROM pg_stat_activity WHERE wait_event IS NOT NULL;
 ### 4. Slow Query Detection
 
 **Enable Query Logging in PostgreSQL**:
+
 ```yaml
 # application.yml
 logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql: TRACE
-    
+
 # Or set in application log handler
 org:
   springframework:
@@ -123,6 +133,7 @@ org:
 ```
 
 **PostgreSQL Slow Query Log**:
+
 ```sql
 -- Connect as postgres admin
 ALTER SYSTEM SET log_min_duration_statement = 1000;  -- Log queries > 1 second
@@ -133,11 +144,12 @@ SELECT * FROM pg_log;
 ```
 
 **Analyze Slow Queries**:
+
 ```sql
 -- Explain plan for slow queries
 EXPLAIN ANALYZE
-SELECT * FROM students 
-WHERE school_id = 1 
+SELECT * FROM students
+WHERE school_id = 1
   AND LOWER(first_name) LIKE '%john%';
 
 -- Use EXPLAIN ANALYZE to see actual vs estimated rows
@@ -149,6 +161,7 @@ WHERE school_id = 1
 ### 1. Redis Cache Layers
 
 **Layer 1: Permission Cache** (highest priority for speed)
+
 ```java
 @Service
 public class PermissionService {
@@ -166,6 +179,7 @@ public void assignRole(Long userId, Long roleId) {
 ```
 
 **Layer 2: Reference Data** (roles, permissions)
+
 ```java
 @Service
 public class RoleService {
@@ -173,7 +187,7 @@ public class RoleService {
     public List<Role> getAllRoles(Long schoolId) {
         return roleRepository.findAllBySchoolId(schoolId);
     }
-    
+
     @CacheEvict(value = "roles", key = "#role.schoolId")
     public Role createRole(Role role) {
         return roleRepository.save(role);
@@ -182,6 +196,7 @@ public class RoleService {
 ```
 
 **Layer 3: Dashboard Aggregations** (most expensive queries)
+
 ```java
 @Service
 public class DashboardService {
@@ -189,14 +204,14 @@ public class DashboardService {
     public Map<String, Object> getSummary(Long schoolId) {
         Long studentCount = studentRepository.countBySchoolId(schoolId);
         Long employeeCount = employeeRepository.countBySchoolId(schoolId);
-        
+
         return Map.of(
             "total_students", studentCount,
             "total_employees", employeeCount,
             "timestamp", LocalDateTime.now()
         );
     }
-    
+
     // Invalidate on create/delete
     @CacheEvict(value = "dashboard-summary", key = "#schoolId")
     public Student createStudent(Student student, Long schoolId) {
@@ -211,7 +226,7 @@ public class DashboardService {
 @Configuration
 @EnableCaching
 public class CacheConfig {
-    
+
     @Bean
     public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         return RedisCacheManager.builder(connectionFactory)
@@ -243,13 +258,13 @@ public class CacheConfig {
 public class CacheWarmer implements InitializingBean {
     private final RoleService roleService;
     private final PermissionService permissionService;
-    
+
     @Override
     public void afterPropertiesSet() {
         // Preload global roles
         Long globalSchoolId = 0L;
         roleService.getAllRoles(globalSchoolId);
-        
+
         logger.info("Cache warming completed");
     }
 }
@@ -261,25 +276,31 @@ public class CacheWarmer implements InitializingBean {
 
 ```javascript
 // App.jsx
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy } from "react";
 
-const Students = lazy(() => import('./pages/Students'));
-const Employees = lazy(() => import('./pages/Employees'));
-const Attendance = lazy(() => import('./pages/Attendance'));
+const Students = lazy(() => import("./pages/Students"));
+const Employees = lazy(() => import("./pages/Employees"));
+const Attendance = lazy(() => import("./pages/Attendance"));
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/students" element={
-        <Suspense fallback={<Loading />}>
-          <Students />
-        </Suspense>
-      } />
-      <Route path="/employees" element={
-        <Suspense fallback={<Loading />}>
-          <Employees />
-        </Suspense>
-      } />
+      <Route
+        path="/students"
+        element={
+          <Suspense fallback={<Loading />}>
+            <Students />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/employees"
+        element={
+          <Suspense fallback={<Loading />}>
+            <Employees />
+          </Suspense>
+        }
+      />
     </Routes>
   );
 }
@@ -299,32 +320,32 @@ function StudentPhoto({ photoPath, name }) {
 }
 
 // Lazy load below-the-fold images
-<img src={photoPath} alt={name} loading="lazy" width="100" height="100" />
+<img src={photoPath} alt={name} loading="lazy" width="100" height="100" />;
 ```
 
 ### 3. API Call Optimization
 
 ```javascript
 // services/api.js
-import axios from 'axios';
+import axios from "axios";
 
 // Reduce redundant API calls
 const cache = new Map();
 
 async function getCachedStudents(page, size) {
   const key = `students:${page}:${size}`;
-  
+
   if (cache.has(key) && cache.get(key).expires > Date.now()) {
     return cache.get(key).data;
   }
-  
-  const response = await api.get('/students', { params: { page, size } });
-  
+
+  const response = await api.get("/students", { params: { page, size } });
+
   cache.set(key, {
     data: response.data,
-    expires: Date.now() + 5 * 60 * 1000  // 5 min TTL
+    expires: Date.now() + 5 * 60 * 1000, // 5 min TTL
   });
-  
+
   return response.data;
 }
 
@@ -332,10 +353,10 @@ async function getCachedStudents(page, size) {
 async function loadDashboardData() {
   const [students, employees, attendance] = await Promise.all([
     getCachedStudents(0, 100),
-    api.get('/employees'),
-    api.get('/attendance/today')
+    api.get("/employees"),
+    api.get("/attendance/today"),
   ]);
-  
+
   return { students, employees, attendance };
 }
 ```
@@ -388,6 +409,7 @@ jmeter -g results.jtl -o report
 ```
 
 **test-plan.jmx**:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2">
@@ -425,22 +447,23 @@ locust -f locustfile.py --host=http://localhost:8080 --users=1000 --spawn-rate=1
 ```
 
 **locustfile.py**:
+
 ```python
 from locust import HttpUser, between, task
 
 class StudentAPIUser(HttpUser):
     wait_time = between(1, 3)
-    
+
     @task(3)
     def get_students(self):
         self.client.get("/api/v1/students?page=0&size=50",
             headers={"Authorization": "Bearer <token>"})
-    
+
     @task(1)
     def get_dashboard(self):
         self.client.get("/api/v1/dashboard/summary",
             headers={"Authorization": "Bearer <token>"})
-    
+
     def on_start(self):
         # Login first
         response = self.client.post("/api/v1/auth/login", json={
@@ -454,12 +477,14 @@ class StudentAPIUser(HttpUser):
 ### 3. Interpreting Results
 
 **Key Metrics**:
+
 - **Response Time (P95)**: 95% of requests complete in < X ms
 - **Throughput**: Requests per second (RPS)
 - **Error Rate**: % of failed requests
 - **Resource Usage**: CPU, Memory, connections
 
 **Example Output**:
+
 ```
 Type      Name                Method  Count   Mean   Min   Max  P95  P99
 GET       /api/v1/students    GET     10000    95    32   450  145  220
@@ -492,10 +517,10 @@ management:
 # Scrape in Prometheus
 # prometheus.yml
 scrape_configs:
-  - job_name: 'school-ms-backend'
+  - job_name: "school-ms-backend"
     static_configs:
-      - targets: ['localhost:8080']
-    metrics_path: '/actuator/prometheus'
+      - targets: ["localhost:8080"]
+    metrics_path: "/actuator/prometheus"
 ```
 
 ### 2. Grafana Dashboard

@@ -5,6 +5,7 @@
 ### 1. Structured Logging with SLF4J
 
 **Application.yml Configuration**:
+
 ```yaml
 logging:
   level:
@@ -12,12 +13,12 @@ logging:
     com.schoolms: DEBUG
     org.springframework.security: DEBUG
     org.springframework.data: DEBUG
-    org.hibernate.SQL: DEBUG  # SQL logging
-    
+    org.hibernate.SQL: DEBUG # SQL logging
+
   pattern:
     console: "%d{ISO8601} [%thread] %-5level %logger - %msg%n"
     file: "%d{ISO8601} [%thread] %-5level %logger - %msg%n"
-  
+
   file:
     name: logs/application.log
     max-size: 100MB
@@ -29,7 +30,7 @@ logging:
 ```java
 @Component
 public class CorrelationIdFilter extends OncePerRequestFilter {
-    
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
@@ -37,10 +38,10 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         if (correlationId == null || correlationId.isEmpty()) {
             correlationId = UUID.randomUUID().toString();
         }
-        
+
         MDC.put("correlation_id", correlationId);
         response.setHeader("X-Correlation-ID", correlationId);
-        
+
         try {
             filterChain.doFilter(request, response);
         } finally {
@@ -58,27 +59,29 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 ```
 
 **Logging with Correlation ID**:
+
 ```java
 @RestController
 @RequestMapping("/api/v1/students")
 public class StudentController {
     private static final Logger logger = LoggerFactory.getLogger(StudentController.class);
-    
+
     @GetMapping
     public ResponseEntity<Page<StudentDTO>> list(Pageable pageable) {
-        logger.info("Listing students", "page_number", pageable.getPageNumber(), 
+        logger.info("Listing students", "page_number", pageable.getPageNumber(),
                     "page_size", pageable.getPageSize());
         // ...
     }
 }
 
-// Output: 
+// Output:
 // 2025-01-15T10:30:45.123Z [correlation_id=abc123] INFO StudentController - Listing students page_number=0 page_size=50
 ```
 
 ### 3. Structured JSON Logging
 
 **Add Logback JSON Encoder**:
+
 ```xml
 <!-- logback-spring.xml -->
 <?xml version="1.0" encoding="UTF-8"?>
@@ -89,7 +92,7 @@ public class StudentController {
             <includeTags>false</includeTags>
         </encoder>
     </appender>
-    
+
     <root level="INFO">
         <appender-ref ref="jsonConsole" />
     </root>
@@ -97,6 +100,7 @@ public class StudentController {
 ```
 
 **Output Format**:
+
 ```json
 {
   "@timestamp": "2025-01-15T10:30:45.123Z",
@@ -115,6 +119,7 @@ public class StudentController {
 ### 1. Spring Boot Actuator
 
 **Enable Actuator Endpoints**:
+
 ```yaml
 management:
   endpoints:
@@ -137,6 +142,7 @@ management:
 ```
 
 **Key Endpoints**:
+
 - `/management/health` - Application health (UP, DOWN, DEGRADED)
 - `/management/health/liveness` - Pod alive check (Kubernetes)
 - `/management/health/readiness` - Ready to accept traffic
@@ -146,22 +152,23 @@ management:
 ### 2. Micrometer Integration
 
 **Custom Metrics**:
+
 ```java
 @Component
 public class StudentMetrics {
     private final MeterRegistry meterRegistry;
-    
+
     public StudentMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
     }
-    
+
     public void recordStudentCreation(Long schoolId) {
         Counter.builder("students.created")
             .tag("school_id", schoolId.toString())
             .register(meterRegistry)
             .increment();
     }
-    
+
     public void recordAttendanceMarked(int count) {
         meterRegistry.gauge("attendance.marked", count);
     }
@@ -171,7 +178,7 @@ public class StudentMetrics {
 @Service
 public class StudentService {
     private final StudentMetrics metrics;
-    
+
     public Student create(CreateStudentRequest req, Long schoolId) {
         Student student = new Student();
         // ... set fields
@@ -185,31 +192,33 @@ public class StudentService {
 ### 3. Prometheus Scraping
 
 **prometheus.yml**:
+
 ```yaml
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'school-ms'
+    monitor: "school-ms"
 
 scrape_configs:
-  - job_name: 'spring-boot-app'
+  - job_name: "spring-boot-app"
     static_configs:
-      - targets: ['localhost:8080']
-    metrics_path: '/management/prometheus'
+      - targets: ["localhost:8080"]
+    metrics_path: "/management/prometheus"
     scrape_interval: 10s
     scrape_timeout: 5s
-    
-  - job_name: 'postgres'
+
+  - job_name: "postgres"
     static_configs:
-      - targets: ['localhost:5432']
-    
-  - job_name: 'redis'
+      - targets: ["localhost:5432"]
+
+  - job_name: "redis"
     static_configs:
-      - targets: ['localhost:6379']
+      - targets: ["localhost:6379"]
 ```
 
 **Run Prometheus**:
+
 ```bash
 docker run -d \
   --name prometheus \
@@ -235,15 +244,18 @@ docker run -d \
 ### 2. Create Dashboard
 
 **Add Prometheus Data Source**:
+
 1. Configuration → Data Sources → Add
 2. Select Prometheus
 3. Enter URL: http://prometheus:9090
 
 **Import Alerting Dashboard**:
+
 1. Create → Import
 2. Upload dashboard JSON (see below)
 
 **Dashboard JSON** (`dashboard.json`):
+
 ```json
 {
   "dashboard": {
@@ -291,7 +303,7 @@ docker run -d \
             "expr": "rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])"
           }
         ],
-        "thresholds": "0,0.01,0.05"  // Error if > 1%
+        "thresholds": "0,0.01,0.05" // Error if > 1%
       },
       {
         "id": 4,
@@ -376,7 +388,6 @@ groups:
   - name: school-ms-alerts
     interval: 30s
     rules:
-      
       # Error Rate Alert
       - alert: HighErrorRate
         expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 0.01
@@ -386,7 +397,7 @@ groups:
         annotations:
           summary: "High error rate on {{ $labels.instance }}"
           description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%)"
-      
+
       # Response Time Alert
       - alert: SlowResponses
         expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 0.5
@@ -396,7 +407,7 @@ groups:
         annotations:
           summary: "Slow responses on {{ $labels.instance }}"
           description: "P95 latency is {{ $value | humanizeDuration }}"
-      
+
       # Database Connection Alert
       - alert: HighDatabaseConnections
         expr: hikaricp_connections_active > 25
@@ -406,7 +417,7 @@ groups:
         annotations:
           summary: "High DB connections"
           description: "{{ $value }} active connections (max pool: 30)"
-      
+
       # Cache Hit Rate Alert
       - alert: LowCacheHitRate
         expr: cache_hit_ratio < 0.7
@@ -416,7 +427,7 @@ groups:
         annotations:
           summary: "Low cache hit rate"
           description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%)"
-      
+
       # Disk Space Alert
       - alert: DiskSpaceRunningOut
         expr: disk_free_bytes / 1024 / 1024 / 1024 < 5
@@ -426,7 +437,7 @@ groups:
         annotations:
           summary: "Low disk space"
           description: "Only {{ $value }} GB free"
-      
+
       # Pod Restarts
       - alert: PodRestartingTooOften
         expr: rate(container_restart_count[15m]) > 0.1
@@ -444,35 +455,35 @@ groups:
 # alertmanager.yml
 global:
   resolve_timeout: 5m
-  slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+  slack_api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 
 route:
-  receiver: 'default'
-  group_by: ['alertname', 'cluster']
+  receiver: "default"
+  group_by: ["alertname", "cluster"]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
-  
+
   routes:
     - match:
         severity: critical
-      receiver: 'critical'
+      receiver: "critical"
       continue: true
 
 receivers:
-  - name: 'default'
+  - name: "default"
     slack_configs:
-      - channel: '#alerts'
-        title: '[{{ .Status }}] {{ .GroupLabels.alertname }}'
-        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
-  
-  - name: 'critical'
+      - channel: "#alerts"
+        title: "[{{ .Status }}] {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+
+  - name: "critical"
     slack_configs:
-      - channel: '#critical-alerts'
+      - channel: "#critical-alerts"
       - user_mentions:
-          - '@devops-on-call'
+          - "@devops-on-call"
     email_configs:
-      - to: 'oncall@example.com'
+      - to: "oncall@example.com"
 ```
 
 ### 3. Running Alertmanager
@@ -490,6 +501,7 @@ docker run -d \
 ### 1. Distributed Tracing Setup
 
 **Add Dependencies** (pom.xml):
+
 ```xml
 <dependency>
     <groupId>io.micrometer</groupId>
@@ -502,11 +514,12 @@ docker run -d \
 ```
 
 **Application Configuration** (application.yml):
+
 ```yaml
 management:
   tracing:
     sampling:
-      probability: 0.1  # Sample 10% of requests
+      probability: 0.1 # Sample 10% of requests
   otlp:
     tracing:
       endpoint: http://localhost:4317
@@ -535,6 +548,7 @@ docker run -d \
 ### 1. Liveness & Readiness Probes (Kubernetes)
 
 **application.yml**:
+
 ```yaml
 management:
   endpoint:
@@ -551,6 +565,7 @@ management:
 ```
 
 **Kubernetes Pod Configuration** (deployment.yaml):
+
 ```yaml
 spec:
   containers:
@@ -563,7 +578,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-      
+
       readinessProbe:
         httpGet:
           path: /management/health/readiness
@@ -615,6 +630,7 @@ output {
 ### 3. Application Logstash Integration
 
 **Add logstash-logback-encoder**:
+
 ```xml
 <!-- pom.xml -->
 <dependency>
@@ -625,6 +641,7 @@ output {
 ```
 
 **logback-spring.xml**:
+
 ```xml
 <appender name="stash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
     <destination>logstash:5000</destination>

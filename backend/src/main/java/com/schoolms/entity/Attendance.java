@@ -3,6 +3,9 @@ package com.schoolms.entity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "attendance")
 public class Attendance extends BaseEntity {
@@ -18,6 +21,7 @@ public class Attendance extends BaseEntity {
     @Column(name = "status", nullable = false)
     private String status; // 'present', 'absent', 'late'
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "meta", columnDefinition = "jsonb")
     private String meta;
 

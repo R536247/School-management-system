@@ -103,6 +103,7 @@ frontend/src/
 ```
 
 **Technology Stack**:
+
 - React 18.2.0 (component framework)
 - React Router 6.14.1 (client-side routing)
 - Axios 1.4.0 (HTTP client)
@@ -110,6 +111,7 @@ frontend/src/
 - React Hook Form 7.45.1 (form state management)
 
 **Authentication Flow**:
+
 ```
 User Input (email, password, schoolId)
     ↓
@@ -179,6 +181,7 @@ HTTP Request
 ```
 
 **Key Packages**:
+
 - `com.schoolms.entity` - JPA entities with tenant support
 - `com.schoolms.repository` - Spring Data JPA repositories
 - `com.schoolms.service` - Business logic
@@ -193,6 +196,7 @@ HTTP Request
 **Schema Design** (see DATABASE_DESIGN.md):
 
 **Core Tables**:
+
 1. **schools** - Tenant records (one per school)
 2. **users** - Login accounts (shared or per-school)
 3. **roles** - Permission groups (SUPER_ADMIN, SCHOOL_ADMIN, TEACHER, EMPLOYEE)
@@ -207,9 +211,10 @@ HTTP Request
 12. **activity_logs** - Audit trail of actions
 
 **Migrations**:
-- **V1__init.sql** - Base schema (schools, users, roles, permissions)
-- **V2__core_entities.sql** - Student/employee/attendance tables
-- **V3__rbac_seed.sql** - Initial role and permission data
+
+- **V1\_\_init.sql** - Base schema (schools, users, roles, permissions)
+- **V2\_\_core_entities.sql** - Student/employee/attendance tables
+- **V3\_\_rbac_seed.sql** - Initial role and permission data
 
 ### 4. Caching Layer (Redis)
 
@@ -246,6 +251,7 @@ Request
 ```
 
 **Cache Annotations**:
+
 - `@Cacheable` - Check cache before query
 - `@CacheEvict` - Remove entry on write operations
 - `@Caching` - Multiple cache operations in one method
@@ -327,6 +333,7 @@ Result: false → 403 Forbidden (GlobalExceptionHandler)
 ```
 
 **Permission Keys** (namespace.action):
+
 ```
 students.*
 ├─ students.view    - List/get students
@@ -349,6 +356,7 @@ reports.*
 ```
 
 **Built-in Roles** (V3 seed data):
+
 1. **SUPER_ADMIN** - All permissions across all schools
 2. **SCHOOL_ADMIN** - All permissions within one school
 3. **TEACHER** - View students, mark attendance, view reports
@@ -361,6 +369,7 @@ reports.*
 **Versioning**: `/api/v1/`
 
 **Base Resources**:
+
 ```
 POST   /api/v1/auth/login                    - Login (credentials → JWT)
 GET    /api/v1/students                      - List (paginated, filtered by school_id)
@@ -394,6 +403,7 @@ GET    /api/v1/dashboard/summary             - Dashboard aggregates (cached)
 ### Request/Response Format
 
 **Login Request**:
+
 ```json
 {
   "schoolId": 1,
@@ -403,6 +413,7 @@ GET    /api/v1/dashboard/summary             - Dashboard aggregates (cached)
 ```
 
 **Login Response** (200):
+
 ```json
 {
   "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
@@ -412,6 +423,7 @@ GET    /api/v1/dashboard/summary             - Dashboard aggregates (cached)
 ```
 
 **Student List** (200):
+
 ```json
 {
   "content": [
@@ -432,6 +444,7 @@ GET    /api/v1/dashboard/summary             - Dashboard aggregates (cached)
 ```
 
 **Error Response** (403):
+
 ```json
 {
   "error_id": "4c54fa31-1234",
@@ -500,9 +513,9 @@ GET    /api/v1/dashboard/summary             - Dashboard aggregates (cached)
                    │
                    ↓ Allow Request:
          Response 200 with data
-         
+
          OR
-         
+
                    ↓ Token Invalid/Expired:
          JwtAuthenticationFilter catches exception
          Response 401 Unauthorized
@@ -579,11 +592,13 @@ Developer Machine:
 ### Horizontal Scaling (Adding servers)
 
 **Frontend**:
+
 - CDN handles static assets globally
 - Multiple instances behind ALB
 - Scale based on CPU/memory (ECS auto-scaling)
 
 **Backend**:
+
 - Stateless design (no session affinity needed)
 - Scale independently based on:
   - CPU utilization > 70%
@@ -592,12 +607,14 @@ Developer Machine:
 - Max instances: 10 per region (cost optimization)
 
 **Database**:
+
 - RDS Multi-AZ (automatic failover)
 - Read replicas for reporting queries
 - Connection pooling (HikariCP 20-50 connections)
 - Query optimization to reduce load
 
 **Cache**:
+
 - Redis Multi-node cluster (automatic sharding)
 - TTL strategy prevents stale data
 - Cache invalidation on writes (immediate consistency)
@@ -605,11 +622,13 @@ Developer Machine:
 ### Vertical Scaling (Bigger servers)
 
 **When to scale vertically**:
+
 - Single instance near CPU limit but request rate low (code optimization needed)
 - Database needs more RAM for working set
 - Memory leaks or unoptimized queries (fix first)
 
 **Architecture preserves vertical scaling**:
+
 - No hard-coded instance limits
 - Can upgrade ECS task CPU/memory via task definition
 - Can upgrade RDS instance class (Multi-AZ restart required)
@@ -617,10 +636,12 @@ Developer Machine:
 ## Disaster Recovery
 
 **RTO/RPO Targets**:
+
 - RTO: < 1 hour (Recover Time Objective)
 - RPO: < 5 minutes (Recovery Point Objective)
 
 **Multi-Region Failover** (optional, for very high availability):
+
 ```
 Primary Region (US-East-1)
 ├─ ECS tasks + RDS + ElastiCache
@@ -633,6 +654,7 @@ Failover Region (US-West-2)
 ```
 
 **Backup Strategy**:
+
 - RDS automated backups: 30 days retention
 - Manual snapshots: Before major deployments
 - Cross-region snapshot copy (optional)
@@ -641,21 +663,25 @@ Failover Region (US-West-2)
 ## Observability
 
 **Logging**:
+
 - Structured JSON logs to ELK stack
 - Correlation IDs for request tracing
 - Log levels: ERROR/WARN/INFO/DEBUG
 
 **Metrics**:
+
 - Prometheus scraping Micrometer metrics
 - Grafana dashboards for visualization
 - Custom metrics: students created, attendance marked, etc.
 
 **Tracing**:
+
 - Jaeger for distributed tracing
 - Identify slow services in service mesh
 - Debug latency issues
 
 **Alerting**:
+
 - Alert on high error rate (> 1%)
 - Alert on slow responses (P95 > 500ms)
 - Alert on low cache hit rate (< 70%)
@@ -665,6 +691,7 @@ Failover Region (US-West-2)
 ## Summary
 
 This architecture provides:
+
 1. **Scalability**: Stateless design, distributed caching, database optimization
 2. **Security**: JWT auth, RBAC permissions, encrypted secrets, audit logs
 3. **Reliability**: Multi-AZ deployment, automated failover, comprehensive monitoring

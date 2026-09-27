@@ -29,19 +29,19 @@ export default function Dashboard() {
       const response = await api.get('/dashboard/summary');
       setDashboardData(response.data);
       
-      // Mock attendance data for chart (i real app, ville hente fra backend)
+      const labels = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
       setAttendanceData({
         labels: ['Man', 'Tirs', 'Ons', 'Tors', 'Fre'],
         datasets: [
           {
             label: 'Tilstede',
-            data: [45, 48, 42, 50, 46],
+            data: labels.map((label) => response.data.presentByDay?.[label] || 0),
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
           },
           {
             label: 'Fraværende',
-            data: [5, 2, 8, 0, 4],
+            data: labels.map((label) => response.data.absentByDay?.[label] || 0),
             borderColor: 'rgb(239, 68, 68)',
             backgroundColor: 'rgba(239, 68, 68, 0.1)',
           },
@@ -79,13 +79,13 @@ export default function Dashboard() {
     },
     {
       title: 'I dag tilstede',
-      value: Math.floor((dashboardData?.totalStudents || 0) * 0.92),
+      value: dashboardData?.presentToday || 0,
       icon: Clock,
       color: 'bg-yellow-100 text-yellow-600',
     },
     {
       title: 'Gj. oppmøte %',
-      value: '92%',
+      value: `${dashboardData?.attendancePercentage || 0}%`,
       icon: TrendingUp,
       color: 'bg-purple-100 text-purple-600',
     },
@@ -157,10 +157,10 @@ export default function Dashboard() {
           <CardBody>
             <Doughnut
               data={{
-                labels: ['Klasse 10', 'Klasse 11', 'Klasse 12'],
+                labels: ['Studenter', 'Ansatte'],
                 datasets: [
                   {
-                    data: [30, 35, 25],
+                    data: [dashboardData?.totalStudents || 0, dashboardData?.totalEmployees || 0],
                     backgroundColor: [
                       'rgba(59, 130, 246, 0.7)',
                       'rgba(34, 197, 94, 0.7)',

@@ -34,6 +34,7 @@
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/controller/AttendanceController.java
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/controller/AuthController.java
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/repository/ClassRepository.java
+/Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/controller/ReportController.java
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/controller/SectionController.java
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/repository/StudentRepository.java
 /Users/rachedalkhatib/Desktop/School system/School-management-system/backend/src/main/java/com/schoolms/entity/BaseEntity.java

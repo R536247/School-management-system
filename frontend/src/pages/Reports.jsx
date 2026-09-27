@@ -27,27 +27,10 @@ export default function Reports() {
       setLoading(true);
       setError(null);
 
-      // Mock generating reports - i real app dette ville hente fra backend
-      const mockReports = {
-        attendance: [
-          { id: 1, class: 'Klasse 10A', presentPercentage: 92, absentDays: 3 },
-          { id: 2, class: 'Klasse 10B', presentPercentage: 87, absentDays: 6 },
-          { id: 3, class: 'Klasse 11A', presentPercentage: 94, absentDays: 2 },
-          { id: 4, class: 'Klasse 11B', presentPercentage: 89, absentDays: 5 },
-        ],
-        students: [
-          { id: 1, name: 'Student A', class: 'Klasse 10A', status: 'active' },
-          { id: 2, name: 'Student B', class: 'Klasse 10B', status: 'active' },
-          { id: 3, name: 'Student C', class: 'Klasse 11A', status: 'inactive' },
-        ],
-        performance: [
-          { id: 1, subject: 'Matematikk', avgGrade: 78, students: 45 },
-          { id: 2, subject: 'Norsk', avgGrade: 82, students: 45 },
-          { id: 3, subject: 'Engelsk', avgGrade: 75, students: 45 },
-        ],
-      };
-
-      setReports(mockReports[reportType] || []);
+      const response = await api.get('/reports', {
+        params: { type: reportType, startDate: dateRange.startDate, endDate: dateRange.endDate },
+      });
+      setReports(response.data || []);
     } catch (err) {
       setError('Kunne ikke generere rapport');
       console.error(err);

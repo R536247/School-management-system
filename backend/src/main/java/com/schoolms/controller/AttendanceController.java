@@ -34,7 +34,14 @@ public class AttendanceController {
     }
 
     @GetMapping
-    public List<Attendance> getForDate(@RequestParam LocalDate date) {
-        return attendanceService.getForDate(date);
+    public ResponseEntity<?> getForDate(@RequestParam LocalDate date,
+                                        @RequestParam String entityType) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getPrincipal() : null;
+        Long userId = principal instanceof Long ? (Long) principal : null;
+        if (userId == null || !permissionService.userHasPermission(userId, "attendance.view")) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+        return ResponseEntity.ok(attendanceService.getForDate(date, entityType));
     }
 }

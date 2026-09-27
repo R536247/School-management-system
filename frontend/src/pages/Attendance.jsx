@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Attendance() {
   const navigate = useNavigate();
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -23,18 +23,18 @@ export default function Attendance() {
       return;
     }
     loadData();
-  }, [navigate, filters.date]);
+  }, [navigate, filters.date, filters.entityType]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Hent studenter
-      const studentsRes = await api.get('/students?page=0&size=100');
-      setStudents(studentsRes.data.content || []);
+      const entityPath = filters.entityType === 'student' ? '/students' : '/employees';
+      const entitiesRes = await api.get(`${entityPath}?page=0&size=100`);
+      setEntities(entitiesRes.data.content || []);
       
       // Hent frammøte for dagen
-      const attendanceRes = await api.get(`/attendance?date=${filters.date}`);
+      const attendanceRes = await api.get(`/attendance?date=${filters.date}&entityType=${filters.entityType}`);
       setAttendanceRecords(attendanceRes.data || []);
       
       setError(null);
@@ -141,35 +141,37 @@ export default function Attendance() {
         />
         <CardBody>
           <div className="space-y-3">
-            {students.map((student) => (
+            {entities.map((entity) => (
               <div
-                key={student.id}
+                key={entity.id}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
                 <div>
                   <p className="font-medium text-gray-900">
-                    {student.firstName} {student.lastName}
+                    {entity.firstName} {entity.lastName}
                   </p>
-                  <p className="text-sm text-gray-600">{student.admissionNo}</p>
+                  <p className="text-sm text-gray-600">
+                    {filters.entityType === 'student' ? entity.admissionNo : entity.roleTitle}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => handleMarkAttendance(student.id, 'present')}
-                    variant={attendanceMap[student.id] === 'present' ? 'success' : 'secondary'}
+                    onClick={() => handleMarkAttendance(entity.id, 'present')}
+                    variant={attendanceMap[entity.id] === 'present' ? 'success' : 'secondary'}
                     size="sm"
                   >
                     <Check size={18} />
                   </Button>
                   <Button
-                    onClick={() => handleMarkAttendance(student.id, 'late')}
-                    variant={attendanceMap[student.id] === 'late' ? 'warning' : 'secondary'}
+                    onClick={() => handleMarkAttendance(entity.id, 'late')}
+                    variant={attendanceMap[entity.id] === 'late' ? 'warning' : 'secondary'}
                     size="sm"
                   >
                     <Clock size={18} />
                   </Button>
                   <Button
-                    onClick={() => handleMarkAttendance(student.id, 'absent')}
-                    variant={attendanceMap[student.id] === 'absent' ? 'danger' : 'secondary'}
+                    onClick={() => handleMarkAttendance(entity.id, 'absent')}
+                    variant={attendanceMap[entity.id] === 'absent' ? 'danger' : 'secondary'}
                     size="sm"
                   >
                     <X size={18} />
@@ -178,10 +180,10 @@ export default function Attendance() {
               </div>
             ))}
           </div>
-          {students.length === 0 && (
+          {entities.length === 0 && (
             <EmptyState
-              title="Ingen studenter"
-              description="Det finnes ingen studenter til denne datoen"
+              title={filters.entityType === 'student' ? 'Ingen studenter' : 'Ingen ansatte'}
+              description="Det finnes ingen personer å registrere for denne datoen"
             />
           )}
         </CardBody>

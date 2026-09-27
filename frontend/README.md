@@ -14,7 +14,7 @@ npm run dev
 
 ## Mappestruktur
 
-```
+````
 frontend/src/
 ├── pages/               # Hele sider
 │   ├── Login.jsx       # Innlogging
@@ -64,7 +64,7 @@ frontend/src/
 
 ```bash
 VITE_API_URL=http://localhost:8080
-```
+````
 
 ## Build
 
@@ -82,4 +82,3 @@ npm run start        # Kjør preview
 - **lucide-react** 0.268.0
 - **tailwindcss** 3.4.7
 - **vite** 5.1.0
-

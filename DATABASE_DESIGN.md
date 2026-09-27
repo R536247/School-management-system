@@ -52,6 +52,7 @@
 ## Core Tables
 
 ### schools
+
 - `id` BIGSERIAL PRIMARY KEY
 - `name` TEXT NOT NULL
 - `subdomain` TEXT
@@ -61,6 +62,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### users
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT (nullable for Super Admin)
 - `email` TEXT UNIQUE (per school)
@@ -70,6 +72,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### roles
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT (0 for global roles)
 - `name` TEXT
@@ -77,22 +80,26 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### permissions
+
 - `id` BIGSERIAL PRIMARY KEY
 - `key` TEXT (e.g., "students.create")
 - `description` TEXT
 
 ### user_roles (Join table)
+
 - `id` BIGSERIAL PRIMARY KEY
 - `user_id` BIGINT REFERENCES users
 - `role_id` BIGINT REFERENCES roles
 - `school_id` BIGINT (for isolation)
 
 ### role_permissions (Join table)
+
 - `id` BIGSERIAL PRIMARY KEY
 - `role_id` BIGINT REFERENCES roles
 - `permission_id` BIGINT REFERENCES permissions
 
 ### classes
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `name` TEXT
@@ -100,6 +107,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### sections
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `class_id` BIGINT REFERENCES classes
@@ -108,6 +116,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### students
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `first_name`, `last_name` TEXT
@@ -121,6 +130,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### employees
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `user_id` BIGINT (optional, links to users if employee has login)
@@ -133,6 +143,7 @@
 - `created_at`, `updated_at` TIMESTAMP WITH TIME ZONE
 
 ### attendance
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `entity_type` TEXT ('student' or 'employee')
@@ -143,6 +154,7 @@
 - `created_at` TIMESTAMP WITH TIME ZONE
 
 ### activity_logs
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `user_id` BIGINT
@@ -154,6 +166,7 @@
 - `created_at` TIMESTAMP WITH TIME ZONE
 
 ### notifications
+
 - `id` BIGSERIAL PRIMARY KEY
 - `school_id` BIGINT NOT NULL
 - `user_id` BIGINT
@@ -164,6 +177,7 @@
 - `created_at` TIMESTAMP WITH TIME ZONE
 
 ### refresh_tokens
+
 - `id` BIGSERIAL PRIMARY KEY
 - `user_id` BIGINT
 - `token_hash` TEXT
@@ -201,10 +215,12 @@ ALTER TABLE sections ADD FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE
 ## Partitioning Strategy (Optional, for scale)
 
 For large deployments, consider table partitioning:
+
 - **attendance**: Partition by date range (monthly or quarterly)
 - **activity_logs**: Partition by date range (monthly, archive old quarters)
 
 Example:
+
 ```sql
 CREATE TABLE attendance_2025_01 PARTITION OF attendance
   FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');

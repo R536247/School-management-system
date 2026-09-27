@@ -4,7 +4,11 @@ INSERT INTO permissions (key, description) VALUES
 ('students.view','View students'),
 ('students.update','Update students'),
 ('students.delete','Delete students'),
+('employees.create','Create employees'),
 ('employees.view','View employees'),
+('employees.update','Update employees'),
+('employees.delete','Delete employees'),
+('attendance.view','View attendance'),
 ('attendance.mark','Mark attendance')
 ON CONFLICT (key) DO NOTHING;
 

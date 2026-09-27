@@ -1,7 +1,7 @@
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import api from '../services/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { setTokens, setSchoolId } from '../utils/auth'
 
 export default function Login(){
@@ -18,7 +18,7 @@ export default function Login(){
       setTokens(accessToken, refreshToken)
       nav('/students')
     } catch (e) {
-      alert(e.response?.data?.message || 'Login failed')
+      alert(e.response?.data?.message || e.response?.data || 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -61,6 +61,10 @@ export default function Login(){
         >
           {loading ? 'Logging in...' : 'Sign in'}
         </button>
+
+        <div className="mt-4 text-center text-sm">
+          <Link to="/forgot-password" className="text-blue-600 hover:underline">Glemt passord?</Link>
+        </div>
       </form>
     </div>
   )

@@ -3,6 +3,7 @@
 ## Architecture & Layer Separation
 
 ### Controller Layer
+
 - **Responsibility**: HTTP request/response handling, input validation, permission checks
 - **Pattern**: `@RestController` with `@RequestMapping("/api/v1/resource")`
 - **Rules**:
@@ -22,6 +23,7 @@
     ```
 
 ### Service Layer
+
 - **Responsibility**: Business logic, multi-entity operations, permission delegation
 - **Pattern**: `@Service` with `@Transactional`
 - **Rules**:
@@ -35,12 +37,12 @@
     public class StudentService {
         private final StudentRepository repository;
         private final ClassService classService;
-        
+
         public StudentService(StudentRepository repo, ClassService svc) {
             this.repository = repo;
             this.classService = svc;
         }
-        
+
         public Student create(CreateStudentRequest req) {
             // Tenant auto-set by listener
             Student s = new Student();
@@ -54,6 +56,7 @@
     ```
 
 ### Repository Layer
+
 - **Responsibility**: Database queries, pagination, filtering
 - **Pattern**: Extend `JpaRepository` with custom methods for complex queries
 - **Rules**:
@@ -64,7 +67,7 @@
     ```java
     public interface StudentRepository extends JpaRepository<Student, Long> {
         Page<Student> findAllBySchoolId(Long schoolId, Pageable page);
-        
+
         @Query(value = "SELECT * FROM students s WHERE s.school_id = :schoolId " +
                "AND LOWER(s.first_name) LIKE LOWER(:query) LIMIT 50", nativeQuery = true)
         List<Student> search(@Param("schoolId") Long schoolId, @Param("query") String query);
@@ -72,6 +75,7 @@
     ```
 
 ### Entity Layer
+
 - **Responsibility**: Data model definition, ORM mapping
 - **Pattern**: Use `@Entity` with `@Data` (Lombok), extend `BaseEntity`
 - **Rules**:
@@ -87,10 +91,10 @@
     public class Student extends BaseEntity {
         private String firstName;
         private String lastName;
-        
+
         @Enumerated(EnumType.STRING)
         private StudentStatus status; // present, absent, late
-        
+
         @Column(columnDefinition = "jsonb")
         private Map<String, Object> customFields = new HashMap<>();
     }
@@ -99,6 +103,7 @@
 ## Error Handling
 
 ### Global Exception Handler
+
 - **Pattern**: Use `@RestControllerAdvice` with `@ExceptionHandler` methods
 - **Rules**:
   - Map application exceptions to HTTP status codes
@@ -118,6 +123,7 @@
     ```
 
 ### Exception Hierarchy
+
 ```
 Exception
 ├── ApplicationException (base, HTTP 400)
@@ -131,6 +137,7 @@ Exception
 ## Logging Strategy
 
 ### Log Levels
+
 - **ERROR**: System failures, unexpected exceptions (database connection loss, NPE)
 - **WARN**: Recoverable issues (deprecated API usage, missing optional field)
 - **INFO**: User actions (login, create student, mark attendance)
@@ -138,7 +145,9 @@ Exception
 - **TRACE**: Never use in production
 
 ### Structured Logging
+
 Use SLF4J with log context for correlation:
+
 ```java
 // Set correlation ID at request entry point
 MDCUtil.setCorrelationId(UUID.randomUUID().toString());
@@ -154,18 +163,23 @@ MDCUtil.clear();
 ## Multi-Tenancy Enforcement
 
 ### Every Query Must Filter by Tenant
+
 ✓ **Correct**:
+
 ```java
 List<Student> students = studentRepository.findAllBySchoolId(TenantContext.getCurrentTenant());
 ```
 
 ✗ **Incorrect**:
+
 ```java
 List<Student> students = studentRepository.findAll(); // BUG: crosses tenants!
 ```
 
 ### Every Create Must Set Tenant
+
 ✓ **Correct**:
+
 ```java
 Student s = new Student();
 s.setFirstName(req.getFirstName());
@@ -174,16 +188,18 @@ s = repository.save(s);
 ```
 
 ✗ **Incorrect**:
+
 ```java
 Student s = new Student(req.getFirstName(), req.getLastName(), null); // school_id null!
 ```
 
 ### Service Layer Must Verify Ownership
+
 ```java
 public Student get(Long studentId) {
     Optional<Student> student = repository.findById(studentId);
     if (student.isEmpty()) throw new NotFoundException("Student not found");
-    
+
     // Verify tenant owns this entity
     if (!student.get().getSchoolId().equals(TenantContext.getCurrentTenant())) {
         throw new PermissionDeniedException("Cannot access student from other school");
@@ -194,24 +210,26 @@ public Student get(Long studentId) {
 
 ## Naming Conventions
 
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Package | lowercase, reverse domain | `com.schoolms.service` |
-| Class | PascalCase | `StudentService`, `CreateStudentRequest` |
-| Method | camelCase, verb-first | `createStudent()`, `getStudentsByClass()` |
-| Variable | camelCase | `firstName`, `studentList` |
-| Constant | UPPER_SNAKE_CASE | `MAX_PAGE_SIZE`, `DEFAULT_EXPIRY_MINUTES` |
-| Table | snake_case, plural | `students`, `user_roles` |
-| Column | snake_case, singular | `first_name`, `is_active` |
-| Permission key | dot notation | `students.create`, `attendance.view`, `reports.export` |
-| API endpoint | kebab-case, plural resource | `/api/v1/students`, `/api/v1/attendance-records` |
+| Element        | Convention                  | Example                                                |
+| -------------- | --------------------------- | ------------------------------------------------------ |
+| Package        | lowercase, reverse domain   | `com.schoolms.service`                                 |
+| Class          | PascalCase                  | `StudentService`, `CreateStudentRequest`               |
+| Method         | camelCase, verb-first       | `createStudent()`, `getStudentsByClass()`              |
+| Variable       | camelCase                   | `firstName`, `studentList`                             |
+| Constant       | UPPER_SNAKE_CASE            | `MAX_PAGE_SIZE`, `DEFAULT_EXPIRY_MINUTES`              |
+| Table          | snake_case, plural          | `students`, `user_roles`                               |
+| Column         | snake_case, singular        | `first_name`, `is_active`                              |
+| Permission key | dot notation                | `students.create`, `attendance.view`, `reports.export` |
+| API endpoint   | kebab-case, plural resource | `/api/v1/students`, `/api/v1/attendance-records`       |
 
 ## Security & Validation
 
 ### Input Validation
+
 - Validate at controller layer before passing to service
 - Use annotations: `@NotNull`, `@NotBlank`, `@Size`, `@Email`, `@Pattern`
 - Example:
+
   ```java
   @PostMapping
   public ResponseEntity<StudentDTO> create(
@@ -219,21 +237,22 @@ public Student get(Long studentId) {
       // Validation happens automatically
       return ResponseEntity.ok(studentService.create(req));
   }
-  
+
   public record CreateStudentRequest(
       @NotBlank(message = "First name required")
       String firstName,
-      
+
       @NotBlank(message = "Email required")
       @Email(message = "Invalid email format")
       String email,
-      
+
       @Positive(message = "Class ID must be positive")
       Long classId
   ) {}
   ```
 
 ### Password Hashing
+
 - Always use BCryptPasswordEncoder; never store plain text
 - Hashing config:
   ```java
@@ -244,6 +263,7 @@ public Student get(Long studentId) {
   ```
 
 ### JWT Security
+
 - Sign with strong secret (32+ random bytes)
 - Short expiry (15 min for access, 7 days for refresh)
 - Include tenant ID (school_id) in claims
@@ -260,6 +280,7 @@ public Student get(Long studentId) {
   ```
 
 ### Permission Checks
+
 - **Method-level**: Use `@PreAuthorize("hasPermission(...)")` for automatic checks
 - **Manual**: Call `permissionService.userHasPermission()` for complex logic
 - **Example**:
@@ -276,6 +297,7 @@ public Student get(Long studentId) {
 ## Testing Guidelines
 
 ### Unit Testing
+
 - Test business logic in isolation (mock dependencies)
 - Use Mockito for mocks/stubs
 - Cover happy path + edge cases + error scenarios
@@ -285,7 +307,7 @@ public Student get(Long studentId) {
   class StudentServiceTest {
       @Mock StudentRepository studentRepository;
       @InjectMocks StudentService studentService;
-      
+
       @Test
       void create_setsSchoolId() {
           Student result = studentService.create(request);
@@ -295,6 +317,7 @@ public Student get(Long studentId) {
   ```
 
 ### Integration Testing
+
 - Test end-to-end with real database (via @SpringBootTest)
 - Verify tenant isolation works
 - Use @Transactional + rollback for test cleanup
@@ -314,6 +337,7 @@ public Student get(Long studentId) {
   ```
 
 ### Test Coverage Targets
+
 - Services: 80%+ coverage, focus on business logic + security
 - Controllers: 70%+ coverage, focus on happy path + error cases
 - Repositories: 90%+ for custom queries
@@ -322,17 +346,19 @@ public Student get(Long studentId) {
 ## Code Quality Guidelines
 
 ### Readability
+
 - Keep methods under 30 lines
 - Use descriptive variable names (avoid `x`, `tmp`, `data`)
 - Add comments for "why", not "what"
 - Example:
+
   ```java
   // GOOD: Explains intent
   // Skip soft-deleted students (indicated by status='inactive') during attendance check
   List<Student> activeStudents = students.stream()
       .filter(s -> StudentStatus.ACTIVE.equals(s.getStatus()))
       .collect(toList());
-  
+
   // BAD: Obvious from code
   List<Student> result = new ArrayList<>();
   for (Student s : students) {
@@ -343,12 +369,14 @@ public Student get(Long studentId) {
   ```
 
 ### Avoiding Technical Debt
+
 - Don't "fix later" without a ticket
 - Use `@Deprecated` with replacement example for APIs
 - Refactor when ratio of new code > logic code in a method
 - Add TODO comments sparingly with context
 
 ### Dependencies
+
 - Keep Spring Boot and Maven dependencies up-to-date
 - Use dependency management in parent POM to avoid version conflicts
 - Avoid circular dependencies between packages
@@ -356,22 +384,25 @@ public Student get(Long studentId) {
 ## Database Migration Guidelines
 
 ### Flyway Best Practices
+
 - One migration per logical database change
-- Use V{version}__descriptive_name.sql
+- Use V{version}\_\_descriptive_name.sql
 - Include rollback comments (informational, Flyway doesn't auto-rollback)
 - Always include IF NOT EXISTS checks
 - Example:
+
   ```sql
   -- V5__add_student_phone.sql
   ALTER TABLE students
   ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20);
-  
+
   CREATE INDEX IF NOT EXISTS idx_students_phone ON students(phone_number);
-  
+
   -- Rollback: ALTER TABLE students DROP COLUMN phone_number;
   ```
 
 ### Zero-Downtime Migrations
+
 - Add columns as nullable first
 - Add indexes concurrently before adding constraints
 - Avoid renaming tables or columns (create new, migrate data, drop old)
@@ -379,17 +410,19 @@ public Student get(Long studentId) {
 ## Performance Considerations
 
 ### Query Optimization
+
 - Use projections for read-heavy queries (select only needed columns)
 - Eager-load relationships to avoid N+1 queries
 - Use pagination for large result sets (default: size=50)
 - Example:
+
   ```java
   // GOOD: Single query with join
   @Query("SELECT new com.schoolms.dto.StudentDTO(s.id, s.firstName, s.lastName) " +
          "FROM Student s LEFT JOIN FETCH s.classRoom " +
          "WHERE s.schoolId = :schoolId")
   Page<StudentDTO> findAll(@Param("schoolId") Long schoolId, Pageable page);
-  
+
   // BAD: N+1 queries
   List<Student> students = repository.findAll(page);
   for (Student s : students) {
@@ -398,12 +431,14 @@ public Student get(Long studentId) {
   ```
 
 ### Caching Strategy
+
 - Cache read-only data (permissions, roles)
 - Cache dashboard aggregations (5-10 min TTL)
 - Invalidate cache on write (use `@CacheEvict`)
 - Never cache PII without encryption
 
 ### Connection Pooling
+
 - Default: HikariCP with maxPoolSize = 20 for dev, 50 for production
 - Configure via `application.yml`:
   ```yaml
@@ -418,6 +453,7 @@ public Student get(Long studentId) {
 ## Documentation Standards
 
 ### Code Comments
+
 - Document "why", not "what" (code shows the what)
 - Use JavaDoc for public APIs
 - Example:
@@ -425,7 +461,7 @@ public Student get(Long studentId) {
   /**
    * Marks attendance for students or employees.
    * Only school admins or supervisors can mark future/past attendance.
-   * 
+   *
    * @param schoolId Current tenant ID
    * @param entityType 'student' or 'employee'
    * @param entityId ID of the entity
@@ -433,17 +469,19 @@ public Student get(Long studentId) {
    * @param status present, absent, or late
    * @throws PermissionDeniedException if user lacks attendance.mark permission
    */
-  public void markAttendance(Long schoolId, String entityType, Long entityId, 
+  public void markAttendance(Long schoolId, String entityType, Long entityId,
                               LocalDate date, AttendanceStatus status) {
   }
   ```
 
 ### API Documentation
+
 - Use OpenAPI (Swagger) annotations
 - Include request/response examples
 - Document error codes and meanings
 
 ### README Requirements
+
 - Quick start (docker-compose + build command)
 - Architecture overview (links to ARCHITECTURE.md)
 - Database schema (links to DATABASE_DESIGN.md)

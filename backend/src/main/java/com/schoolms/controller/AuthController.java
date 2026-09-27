@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +50,41 @@ public class AuthController {
 
         return ResponseEntity.ok(new AuthResponse(access, refresh));
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        if (req.getSchoolId() == null || req.getEmail() == null || req.getCurrentPassword() == null
+                || req.getNewPassword() == null || req.getConfirmPassword() == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "School ID, email and current/new password are required."));
+        }
+
+        if (!req.getNewPassword().equals(req.getConfirmPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password confirmation does not match."));
+        }
+
+        String email = req.getEmail().trim().toLowerCase();
+        Long tenant = req.getSchoolId();
+
+        TenantContext.setCurrentTenant(tenant);
+        try {
+            Optional<User> optionalUser = userRepository.findByEmailAndSchoolId(email, tenant);
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("message", "No user found for that school and email."));
+            }
+
+            User user = optionalUser.get();
+            if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPasswordHash())) {
+                return ResponseEntity.status(401).body(Map.of("message", "Current password is incorrect."));
+            }
+            user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+            userRepository.save(user);
+            refreshRepo.deleteByUserId(user.getId());
+
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully."));
+        } finally {
+            TenantContext.clear();
+        }
+    }
 }
 
 class AuthRequest {
@@ -58,6 +94,25 @@ class AuthRequest {
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+}
+
+class ResetPasswordRequest {
+    private Long schoolId;
+    private String email;
+    private String currentPassword;
+    private String newPassword;
+    private String confirmPassword;
+
+    public Long getSchoolId() { return schoolId; }
+    public void setSchoolId(Long schoolId) { this.schoolId = schoolId; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getCurrentPassword() { return currentPassword; }
+    public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
+    public String getNewPassword() { return newPassword; }
+    public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    public String getConfirmPassword() { return confirmPassword; }
+    public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
 }
 
 class AuthResponse {
